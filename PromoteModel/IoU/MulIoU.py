@@ -6,6 +6,11 @@ import torch.nn as nn
 
 
 # 使用时，将其更名为bbox_iou放入到metrics.py里
+# alpha=1时，认为与正常的IoU无异，alpha!=1时，进化为alpha-IoU，一般认为alpha=3时，IoU有较好的表现
+# Focal——EIoU的思想可以用在其他的IoU变体上，但是Focal+SIoU存在问题，且目前尚不稳定
+# gamma为Focal——EIoU的参数，默认0.5，可自行修改
+# 此外，仍需要修改其他文件中的部分语句
+# utils/loss.py中ComputeLoss Class中的__call__函数中修改一下：
 def bbox_iou(box1, box2, x1y1x2y1=True, GIoU=False, DIoU=False, CIoU=False, EIoU=False,
              SIoU=False, Focal=False, alpha=1, gamma=0.5, eps=1e-7):
     box2 = box2.T
