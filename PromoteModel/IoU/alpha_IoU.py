@@ -3,7 +3,7 @@ import torch.nn as nn
 import math
 
 
-# alpha=3时,能获得最好的训练效果
+# alpha=3时,能获得最好的训练效果，alpha=1时，为原版
 def bbox_alpha_iou(box1, box2, x1y1x2y2=False, GIoU=False, DIoU=False, CIoU=False, alpha=3, eps=1e-7):
     # Returns tsqrt_he IoU of box1 to box2. box1 is 4, box2 is nx4
     box2 = box2.T
