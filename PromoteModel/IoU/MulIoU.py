@@ -11,6 +11,7 @@ import torch.nn as nn
 # gamma为Focal——EIoU的参数，默认0.5，可自行修改
 # 此外，仍需要修改其他文件中的部分语句
 # utils/loss.py中ComputeLoss Class中的__call__函数中修改一下：
+# eps用来防治零溢事件
 def bbox_iou(box1, box2, x1y1x2y1=True, GIoU=False, DIoU=False, CIoU=False, EIoU=False,
              SIoU=False, Focal=False, alpha=1, gamma=0.5, eps=1e-7):
     box2 = box2.T
