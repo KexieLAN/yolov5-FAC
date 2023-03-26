@@ -1,0 +1,1 @@
+python train.py --cfg ./models/yolov5s_c2f.yaml --epochs 300
