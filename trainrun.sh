@@ -1,1 +1,1 @@
-python train.py --cfg ./models/yolov5s_c2f.yaml --epochs 300
+python train.py --cfg ./models/yolov5s_c2f.yaml --weights yolov5s.pt --epochs 1000
