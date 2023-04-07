@@ -12,6 +12,13 @@ import torch.nn as nn
 # 此外，仍需要修改其他文件中的部分语句
 # utils/loss.py中ComputeLoss Class中的__call__函数中修改一下：
 # eps用来防治零溢事件
+
+# GIoU：计算两框的组合与未交错区域之比
+# DIoU：GIoU基础上，计算两框中间的欧氏距离
+# CIoU：DIoU基础上，涉及长宽比
+# EIoU： 在CIOU的惩罚项基础上将纵横比的影响因子拆开分别计算目标框和锚框的长和宽
+# SIoU：
+
 def bbox_iou(box1, box2, x1y1x2y1=True, GIoU=False, DIoU=False, CIoU=False, EIoU=False,
              SIoU=False, Focal=False, alpha=1, gamma=0.5, eps=1e-7):
     box2 = box2.T

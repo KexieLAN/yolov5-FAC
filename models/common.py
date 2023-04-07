@@ -896,3 +896,49 @@ class Classify(nn.Module):
         if isinstance(x, list):
             x = torch.cat(x, 1)
         return self.linear(self.drop(self.pool(self.conv(x)).flatten(1)))
+
+
+class SE(nn.Module):
+    # ratio：缩放比例
+    def __init__(self, channel, ratio=16):
+        super(SE, self).__init__()
+        # 对输入的特征层进行自适应全局平均池化（高，宽）
+        self.avgpooling = nn.AdaptiveAvgPool2d(1)
+        self.model = nn.Sequential(
+            # 两次全连接操作
+            # 第一次全连接神经元个数较少，第二次全连接神经元个数和输入特征层相同。
+            # 先对C个通道降维再扩展回C通道。好处就是一方面降低了网络计算量，一方面增加了网络的非线性能力。
+            nn.Linear(channel, channel // ratio, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(channel // ratio, channel, bias=False),
+            # Sigmod将输出固定在0~1之间
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        # b,c,w,h  ->  b,c,1,1
+        y = self.avgpooling(x).view(b, c)
+        # b,c -> b,c/ratio -> b,c -> b,c,1,1
+        y = self.model(y).view(b, c, 1, 1)
+        return x * y
+
+class EAC(nn.Module):
+    def __init__(self, channle, b=1, gamma=2):
+        super(EAC, self).__init__()
+        # 求卷积核大小
+        kernel_size = int(abs((math.log(channle, 2) + b) / gamma))
+        kernel_size = kernel_size if kernel_size % 2 else kernel_size + 1
+        padding = kernel_size // 2
+        # 在全局平均池化后，加一个1D卷积进行学习
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        # 1D卷积就是横着（顺着一个维度）扫完
+        self.conv1d = nn.Conv1d(1, 1, kernel_size, padding=padding, bias=False)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        b, c, w, h = x.size()
+        avg = self.avgpool(x).view([b, 1, c])
+        out = self.conv1d(avg)
+        out = self.sigmoid(out).view([b, c, 1, 1])
+        return out * x
