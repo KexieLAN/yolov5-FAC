@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+# YOLOv5默认的激活函数
 
 # 优点
 # 1.无上界(避免过拟合)
