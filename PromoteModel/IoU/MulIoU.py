@@ -16,7 +16,7 @@ import torch.nn as nn
 # GIoU：计算两框的组合与未交错区域之比
 # DIoU：GIoU基础上，计算两框中间的欧氏距离
 # CIoU：DIoU基础上，涉及长宽比
-# EIoU： 在CIOU的惩罚项基础上将纵横比的影响因子拆开分别计算目标框和锚框的长和宽
+# EIoU：在CIOU的惩罚项基础上将纵横比的影响因子拆开分别计算目标框和锚框的长和宽
 # SIoU：
 
 def bbox_iou(box1, box2, x1y1x2y1=True, GIoU=False, DIoU=False, CIoU=False, EIoU=False,
