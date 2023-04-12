@@ -150,16 +150,22 @@ def run(
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             imc = im0.copy() if save_crop else im0  # for save_crop
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
+            # 显示计数
+            Count = "Counts: "
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_boxes(im.shape[2:], det[:, :4], im0.shape).round()
 
                 # Print results
+                # 打印结果
                 for c in det[:, 5].unique():
                     n = (det[:, 5] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
+                    # 扩充变量Count
+                    Count += '\n' + f"{names[int(c)]}: {n}"
 
                 # Write results
+                # 仅在设置了保存文本(save_txt)，保存图像(save_img)和保存目标(save_corp)时生效
                 for *xyxy, conf, cls in reversed(det):
                     if save_txt:  # Write to file
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
@@ -175,17 +181,38 @@ def run(
                         save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
 
             # Stream results
+            # 流媒体格式的文件，如视频流，网络视频流
             im0 = annotator.result()
+            # view_img参数，展示当前的识别进度和识别结果
             if view_img:
                 if platform.system() == 'Linux' and p not in windows:
                     windows.append(p)
                     cv2.namedWindow(str(p), cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
                     cv2.resizeWindow(str(p), im0.shape[1], im0.shape[0])
+                # 用于展示特定结果与计数的代码
+                # 图片，文字，位置，文字类型，字体大小，颜色，粗细
+                cv2.putText(im0, f"{n} {names[int(c)]}{'s' * (n > 1)}", (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2,
+                            (0, 0, 255), 2)
+                y0, dy = 30, 40
+                for dus, txt in enumerate(Count.split('\n')):
+                    y = y0 + dus * dy
+                    cv2.putText(im0, txt, (50, y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3, 2)
+                #     cv2.putText(im0, Count, (50, y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
+                # 左上角显示检测标签和数量
                 cv2.imshow(str(p), im0)
                 cv2.waitKey(1)  # 1 millisecond
 
             # Save results (image with detections)
+            # 保存检测结果
             if save_img:
+                if not view_img:
+                    # # 需用循环的方式显示多行,因为cv2.putText对换行转义符'\n'显示为'?'
+                    y0, dy = 30, 40
+                    for dus, txt in enumerate(Count.split('\n')):
+                        y = y0 + dus * dy
+                        cv2.putText(im0, txt, (50, y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3, 2)
+                    #     cv2.putText(im0, Count, (50, y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
+                    # 左上角显示检测标签和数量
                 if dataset.mode == 'image':
                     cv2.imwrite(save_path, im0)
                 else:  # 'video' or 'stream'
@@ -227,10 +254,10 @@ def parse_opt():
     # 执行检测前，会将图片resize成*640*640大小，可以修改
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640], help='inference size h,w')
     # 置信度阈值，用于限制或提高网络的敏感度（或者说将更多或更少可疑目标端上来）
-    parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
+    parser.add_argument('--conf-thres', type=float, default=0.45, help='confidence threshold')
     # 调节IoU阈值
     # 通过NMS（非极大值抑制）来清理boundingbox   https://blog.csdn.net/mechleechan/article/details/88365039
-    parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU threshold')
+    parser.add_argument('--iou-thres', type=float, default=0.25, help='NMS IoU threshold')
     # 最大目标检测数(置信度排序)，额，随意
     parser.add_argument('--max-det', type=int, default=1000, help='maximum detections per image')
     # 设备选择，默认采用CUDA设备，可以手动指定多GPU
@@ -266,7 +293,7 @@ def parse_opt():
     # 如果指定了这个参数的话，那么本次预测的结果还是保存在上一次保存的文件夹里；如果不指定就是每次预测结果保存一个新的文件夹下。
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     # 调节box的粗细，可用来防遮挡
-    parser.add_argument('--line-thickness', default=3, type=int, help='bounding box thickness (pixels)')
+    parser.add_argument('--line-thickness', default=2, type=int, help='bounding box thickness (pixels)')
     # 隐藏标签
     parser.add_argument('--hide-labels', default=False, action='store_true', help='hide labels')
     # 隐藏置信度
@@ -290,3 +317,90 @@ def main(opt):
 if __name__ == "__main__":
     opt = parse_opt()
     main(opt)
+
+
+# 可能有用的计时代码
+# import cv2
+# import torch
+# from models.experimental import attempt_load
+# from utils.datasets import LoadStreams, LoadImages
+# from utils.general import non_max_suppression, scale_coords
+# from utils.plots import plot_one_box
+# from utils.torch_utils import select_device
+#
+# # 设置参数
+# weights = 'yolov5s.pt'  # 模型权重路径
+# img_size = 640  # 输入图像尺寸
+# conf_thres = 0.4  # 置信度阈值
+# iou_thres = 0.5  # NMS阈值
+# device = select_device('')  # 使用CPU或GPU
+# model = attempt_load(weights, map_location=device).autoshape()  # 加载模型并自适应输入形状
+# names = model.module.names if hasattr(model, 'module') else model.names  # 获取类别名称
+#
+# # 加载视频
+# cap = cv2.VideoCapture('test.mp4')
+# fps = cap.get(cv2.CAP_PROP_FPS)  # 获取视频帧率
+# frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))  # 获取视频总帧数
+#
+# # 初始化变量
+# prev_boxes = None  # 上一帧的检测结果
+# prev_time = None  # 上一帧的时间
+# total_time = 0  # 检测目标总时间
+#
+# while True:
+#     ret, img0 = cap.read()
+#     if not ret:
+#         break
+#
+#     # 图像预处理
+#     img = cv2.cvtColor(img0, cv2.COLOR_BGR2RGB)
+#     img = cv2.resize(img, (img_size, img_size))
+#     img = torch.from_numpy(img).to(device).float() / 255.0
+#     img = img.permute(2, 0, 1).unsqueeze(0)
+#
+#     # 目标检测
+#     pred = model(img)[0]
+#     pred = non_max_suppression(pred, conf_thres, iou_thres, classes=None, agnostic=False)
+#
+#     # 处理检测结果
+#     boxes = []
+#     for i, det in enumerate(pred):
+#         if len(det):
+#             det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img0.shape).round()
+#             for *xyxy, conf, cls in reversed(det):
+#                 label = f'{names[int(cls)]} {conf:.2f}'
+#                 plot_one_box(xyxy, img0, label=label, color=(0, 255, 0), line_thickness=3)
+#                 boxes.append([int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])])
+#
+#     # 计算检测目标时间
+#     if prev_boxes is not None and len(boxes) > 0:
+#         overlap = 0
+#         for box in boxes:
+#             for prev_box in prev_boxes:
+#                 x1 = max(box[0], prev_box[0])
+#                 y1 = max(box[1], prev_box[1])
+#                 x2 = min(box[2], prev_box[2])
+#                 y2 = min(box[3], prev_box[3])
+#                 if x2 > x1 and y2 > y1:
+#                     overlap += (x2 - x1) * (y2 - y1)
+#         if overlap > 0:
+#             curr_time = 1 / fps * (cap.get(cv2.CAP_PROP_POS_FRAMES) - 1)
+#             if prev_time is not None:
+#                 total_time += curr_time - prev_time
+#             prev_time = curr_time
+#
+#     # 更新变量
+#     prev_boxes = boxes
+#
+#     # 显示结果
+#     cv2.imshow('result', img0)
+#     if cv2.waitKey(1) == ord('q'):
+#         break
+#
+# # 输出结果
+# print(f'Total time: {total_time:.2f}s')
+# print(f'Time per object: {total_time / len(prev_boxes):.2f}s')
+#
+# # 释放资源
+# cap.release()
+# cv2.destroyAllWindows()
