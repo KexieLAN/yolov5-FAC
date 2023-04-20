@@ -257,6 +257,7 @@ def parse_opt():
     parser.add_argument('--conf-thres', type=float, default=0.45, help='confidence threshold')
     # 调节IoU阈值
     # 通过NMS（非极大值抑制）来清理boundingbox   https://blog.csdn.net/mechleechan/article/details/88365039
+    # 越小，意味着越接近目标
     parser.add_argument('--iou-thres', type=float, default=0.25, help='NMS IoU threshold')
     # 最大目标检测数(置信度排序)，额，随意
     parser.add_argument('--max-det', type=int, default=1000, help='maximum detections per image')
