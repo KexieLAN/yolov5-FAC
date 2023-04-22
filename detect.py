@@ -299,7 +299,7 @@ def parse_opt():
     parser.add_argument('--hide-labels', default=False, action='store_true', help='hide labels')
     # 隐藏置信度
     parser.add_argument('--hide-conf', default=False, action='store_true', help='hide confidences')
-    # 使用16位精度(半精度推理)。一般在training中关闭half
+    # 使用16位精度(半精度推理)。一般在training中关闭half 对GTX16系列存在兼容性问题
     parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
     # 是否使用OpenCV DNN进行ONNX推理
     parser.add_argument('--dnn', action='store_true', help='use OpenCV DNN for ONNX inference')

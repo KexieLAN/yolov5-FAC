@@ -1,4 +1,4 @@
-# YOLOv5 🚀 by Ultralytics, GPL-3.0 license
+# YOLOv5 🚀 by Ultralytics, AGPL-3.0 license
 """
 Loss functions
 """
@@ -139,33 +139,23 @@ class ComputeLoss:
                 pxy = pxy.sigmoid() * 2 - 0.5
                 pwh = (pwh.sigmoid() * 2) ** 2 * anchors[i]
                 pbox = torch.cat((pxy, pwh), 1)  # predicted box
-                # ----------------------------------------------------------------------------
+                # -------------------------------------------------------------------------------
+                # 原生loss
                 # iou = bbox_iou(pbox, tbox[i], CIoU=True).squeeze()  # iou(prediction, target)
                 # lbox += (1.0 - iou).mean()  # iou loss
-                # ============================================================================
-                # 在此处修改IoULoss算法
-                iou = bbox_iou(pbox, tbox[i], EIoU=True).squeeze()  # iou(prediction, target)
+                # -------------------------------------------------------------------------------
+                # 修改的IoUloss
+                iou = bbox_iou(pbox, tbox[i], CIoU=True)
                 if isinstance(iou, tuple):
                     if len(iou) == 2:
-                        lbox += (iou[1].detach().squeeze() * (1.0 - iou[0].squeeze())).mean()
+                        lbox += (iou[1].detach().squeeze() * (1 - iou[0].squeeze())).mean()
                         iou = iou[0].squeeze()
                     else:
                         lbox += (iou[0] * iou[1]).mean()
                         iou = iou[2].squeeze()
                 else:
-                    lbox += (1.0 - iou.squeeze()).mean()
+                    lbox += (1.0 - iou.squeeze()).mean()  # iou loss
                     iou = iou.squeeze()
-                # ============================================================================
-                # iou loss  旧版修改
-                # ----------------------------------------------------------------------------
-                # iou = bbox_iou(pbox, tbox[i], EIoU=True, Focal=True)
-                # if type(iou) is tuple:
-                #     lbox += (iou[1].detach().squeeze() * (1 * iou[0].squeeze())).mean()
-                #     iou = iou[0].squeeze()
-                # else:
-                #     lbox += (1.0 - iou.squeeze()).mean()
-                #     iou = iou.squeeze()
-                # ----------------------------------------------------------------------------
 
                 # Objectness
                 iou = iou.detach().clamp(0).type(tobj.dtype)

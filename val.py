@@ -373,7 +373,7 @@ def parse_opt():
     parser.add_argument('--project', default=ROOT / 'runs/val', help='save to project/name')
     parser.add_argument('--name', default='exp', help='save to project/name')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
-    # 半精度浮点运算，用于加速，默认关闭
+    # 半精度浮点运算，用于加速，默认关闭 对GTX16系列存在兼容性问题
     parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
     # 是否使用 OpenCV DNN 进行 ONNX 推理
     parser.add_argument('--dnn', action='store_true', help='use OpenCV DNN for ONNX inference')

@@ -129,7 +129,12 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
         LOGGER.info(f'Transferred {len(csd)}/{len(model.state_dict())} items from {weights}')  # report
     else:
         model = Model(cfg, ch=3, nc=nc, anchors=hyp.get('anchors')).to(device)  # create
-    amp = check_amp(model)  # check AMP
+
+    # 禁止使用half，针对GTX 16系列显卡，因为该系列显卡存在兼容性问题
+    # 之前部署stableDiffusion时，使用混合精度（MP）会导致模型出图异常
+    # 在其他GPU架构的机器上可以开启AMP
+    # amp = check_amp(model)  # check AMP
+    amp = False
 
     # Freeze
     freeze = [f'model.{x}.' for x in (freeze if len(freeze) > 1 else range(freeze[0]))]  # layers to freeze
@@ -444,7 +449,7 @@ def parse_opt(known=False):
     # 训练轮数
     parser.add_argument('--epochs', type=int, default=100, help='total training epochs')
     # 训练簇大小，-1为自适应
-    parser.add_argument('--batch-size', type=int, default=16, help='total batch size for all GPUs, -1 for autobatch')
+    parser.add_argument('--batch-size', type=int, default=9, help='total batch size for all GPUs, -1 for autobatch')
     # 训练图像大小，默认640*640，图像会先resize，再输入训练
     parser.add_argument('--imgsz', '--img', '--img-size', type=int, default=640, help='train, val image size (pixels)')
     # 矩形推演，将图像Resize为矩形图片，可以加速训练（？
