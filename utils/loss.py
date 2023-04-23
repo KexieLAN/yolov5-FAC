@@ -145,7 +145,7 @@ class ComputeLoss:
                 # lbox += (1.0 - iou).mean()  # iou loss
                 # -------------------------------------------------------------------------------
                 # 修改的IoUloss
-                iou = bbox_iou(pbox, tbox[i], EIoU=True)
+                iou = bbox_iou(pbox, tbox[i], WIoU=True, scale=True, monotonous=True)
                 if isinstance(iou, tuple):
                     if len(iou) == 2:
                         lbox += (iou[1].detach().squeeze() * (1 - iou[0].squeeze())).mean()

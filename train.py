@@ -449,7 +449,7 @@ def parse_opt(known=False):
     # 训练轮数
     parser.add_argument('--epochs', type=int, default=100, help='total training epochs')
     # 训练簇大小，-1为自适应
-    parser.add_argument('--batch-size', type=int, default=9, help='total batch size for all GPUs, -1 for autobatch')
+    parser.add_argument('--batch-size', type=int, default=16, help='total batch size for all GPUs, -1 for autobatch')
     # 训练图像大小，默认640*640，图像会先resize，再输入训练
     parser.add_argument('--imgsz', '--img', '--img-size', type=int, default=640, help='train, val image size (pixels)')
     # 矩形推演，将图像Resize为矩形图片，可以加速训练（？
