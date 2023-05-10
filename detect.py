@@ -192,8 +192,8 @@ def run(
                     cv2.resizeWindow(str(p), im0.shape[1], im0.shape[0])
                 # 用于展示特定结果与计数的代码
                 # 图片，文字，位置，文字类型，字体大小，颜色，粗细
-                cv2.putText(im0, f"{n} {names[int(c)]}{'s' * (n > 1)}", (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2,
-                            (0, 0, 255), 2)
+                # cv2.putText(im0, f"{n} {names[int(c)]}{'s' * (n > 1)}", (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2,
+                #             (0, 0, 255), 2)
                 y0, dy = 30, 40
                 for dus, txt in enumerate(Count.split('\n')):
                     y = y0 + dus * dy
