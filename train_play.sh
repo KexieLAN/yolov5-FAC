@@ -1,1 +1,3 @@
-python.exe detect.py --weights='crowdhuman_yolov5m.pt' --source='G:/FAC_EX/train/images' --data='crowdhuman.yaml' --classes 0 --project='G:/FAC_EX/val' --line-thickness=1 --save-txt
+python train.py --weights yolov5m.pt --cfg ./models/yolov5m_SE.yaml --data ./data/FAC-liunx.yaml --epochs 1000 --batch-size 6 --multi-scale --patience 50;
+sleep 300;
+sh /mistgpu/shutdown.sh;
