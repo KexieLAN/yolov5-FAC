@@ -19,4 +19,4 @@ names:
   1: dir_face
   2: no_dir_face
 
-#python.exe .\train.py --weights yolov5s.pt --cfg .\models\yolov5_SE.yaml --data .\data\FAC.yaml --epochs 300 --batch-size -1
+#python.exe .\train.py --weights yolov5s.pt --cfg .\models\yolov5s_C3_SE.yaml --data .\data\FAC.yaml --epochs 300 --batch-size -1
