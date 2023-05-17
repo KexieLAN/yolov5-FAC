@@ -28,6 +28,8 @@ from utils.general import LOGGER, check_version, check_yaml, make_divisible, pri
 from utils.plots import feature_visualization
 from utils.torch_utils import (fuse_conv_and_bn, initialize_weights, model_info, profile, scale_img, select_device,
                                time_sync)
+from models.SOCA import SOCA
+from models.CBAM import CBAM
 
 try:
     import thop  # for FLOPs computation
@@ -317,19 +319,30 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         if m in {
             Conv, GhostConv, Bottleneck, GhostBottleneck, SPP, SPPF, DWConv, MixConv2d, Focus, CrossConv,
             BottleneckCSP, C3, C3TR, C3SPP, C3Ghost, nn.ConvTranspose2d, DWConvTranspose2d, C3x, C2f, C2f_Bottleneck,
-            EAC,SE}:
+            SimAM}:
             c1, c2 = ch[f], args[0]
             if c2 != no:  # if not output
                 c2 = make_divisible(c2 * gw, 8)
-
             args = [c1, c2, *args[1:]]
             if m in {BottleneckCSP, C3, C3TR, C3Ghost, C3x, C2f}:
                 args.insert(2, n)  # number of repeats
                 n = 1
         elif m is nn.BatchNorm2d:
             args = [ch[f]]
-        # elif m is SE:
-        #     args = [ch[f],*args]
+        elif m in {SE, CA, CBAM}:
+            args = [ch[f], *args]
+        elif m is SOCA:
+            c1, c2 = ch[f], args[0]
+            if c2 != no:
+                c2 = make_divisible(c2 * gw, 8)
+            args = [c1, *args[1:]]
+        # elif m is SimAM:
+        #     c1, c2 = ch[f], args[0]
+        #     if c2 != no:
+        #         c2 = make_divisible(c2 * gw, 8)
+        #     args = [c1, c2]
+        # elif m is CA:
+        #     args = [ch[f]]
         elif m is Concat:
             c2 = sum(ch[x] for x in f)
         # TODO: channel, gw, gd

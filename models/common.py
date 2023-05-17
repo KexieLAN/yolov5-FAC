@@ -34,6 +34,7 @@ from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import copy_attr, smart_inference_mode
 
 
+
 # 自动求padding参数
 def autopad(k, p=None, d=1):  # kernel, padding, dilation
     # Pad to 'same' shape outputs
@@ -157,6 +158,7 @@ class CrossConv(nn.Module):
 
     def forward(self, x):
         return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+
 
 # YOLOv5原生的C3模块
 class C3(nn.Module):
@@ -924,6 +926,7 @@ class SE(nn.Module):
         y = self.model(y).view(b, c, 1, 1)
         return x * y
 
+
 class EAC(nn.Module):
     def __init__(self, channle, b=1, gamma=2):
         super(EAC, self).__init__()
@@ -943,3 +946,154 @@ class EAC(nn.Module):
         out = self.conv1d(avg)
         out = self.sigmoid(out).view([b, c, 1, 1])
         return out * x
+
+
+class channle_attention(nn.Module):
+    def __init__(self, channle, ratio=16):
+        super(channle_attention, self).__init__()
+        # Max Pooling与Avg Pooling
+        self.maxpooling = nn.AdaptiveMaxPool2d(1)
+        self.avgpooling = nn.AdaptiveAvgPool2d(1)
+        # 共享的全连接层
+        self.model = nn.Sequential(
+            nn.Linear(channle, channle // ratio, bias=False),
+            nn.ReLU(),
+            nn.Linear(channle // ratio, channle, bias=False)
+        )
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        b, c, w, h = x.size()
+        # 对通道进行最大池化和空间池化
+        max_pool_out = self.maxpooling(x).view([b, c])
+        avg_pool_out = self.avgpooling(x).view([b, c])
+        # 分别使用全连接层进行连接
+        max_fc_out = self.model(max_pool_out)
+        avg_fc_out = self.model(avg_pool_out)
+        # 二者合并
+        out = max_fc_out + avg_fc_out
+        # Sigmoid控制值在0~1之间
+        out = self.sigmoid(out).view([b, c, 1, 1])
+        # 权重与x各个通道相乘
+        return x * out
+
+
+# 空间注意力
+class spacial_attention(nn.Module):
+    def __init__(self, kernel_size=7):
+        super(spacial_attention, self).__init__()
+        # (特征图的大小-算子的size+2*padding)/步长+1
+        # 保持图像的W，H不变
+        assert kernel_size in (3, 7), 'kernel size must be 3 or 7'
+        padding = 3 if kernel_size == 7 else 1
+        # 卷积层，输入2通道，输出1通道
+        self.conv = nn.Conv2d(2, 1, kernel_size=kernel_size, stride=1, padding=padding, bias=False)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        # 获取两个层，全局最大池化 与 全局平均池化
+        max_pool_out, _ = torch.max(x, dim=1, keepdim=True)
+        avg_pool_out, _ = torch.mean(x, dim=1, keepdim=True)
+        # 连接两个层，用于后续卷积
+        pool_out = torch.cat([max_pool_out, avg_pool_out], dim=1)
+        # 卷积
+        out = self.conv(pool_out)
+        out = self.sigmoid(out)
+        return out * x
+
+
+class CBAM(nn.Module):
+    def __init__(self, channel, ratio=16, kernel_size=3):
+        super(CBAM, self).__init__()
+        self.channle_attention = channle_attention(channel, ratio)
+        self.spacial_attention = spacial_attention(kernel_size)
+
+    def forward(self, x):
+        x = self.channle_attention(x)
+        x = self.spacial_attention(x)
+        return x
+
+
+# CA
+class h_sigmoid(nn.Module):
+    def __init__(self, inplace=True):
+        super(h_sigmoid, self).__init__()
+        self.relu = nn.ReLU6(inplace=inplace)
+
+    def forward(self, x):
+        return self.relu(x + 3) / 6
+
+
+class h_swish(nn.Module):
+    def __init__(self, inplace=True):
+        super(h_swish, self).__init__()
+        self.sigmoid = h_sigmoid(inplace=inplace)
+
+    def forward(self, x):
+        return x * self.sigmoid(x)
+
+
+class CA(nn.Module):
+    def __init__(self, inp, oup, reduction=32):
+        super(CA, self).__init__()
+        self.pool_h = nn.AdaptiveAvgPool2d((None, 1))
+        self.pool_w = nn.AdaptiveAvgPool2d((1, None))
+
+        mip = max(8, inp // reduction)
+
+        self.conv1 = nn.Conv2d(inp, mip, kernel_size=1, stride=1, padding=0)
+        self.bn1 = nn.BatchNorm2d(mip)
+        self.act = h_swish()
+
+        self.conv_h = nn.Conv2d(mip, oup, kernel_size=1, stride=1, padding=0)
+        self.conv_w = nn.Conv2d(mip, oup, kernel_size=1, stride=1, padding=0)
+
+    def forward(self, x):
+        identity = x
+
+        n, c, h, w = x.size()
+        x_h = self.pool_h(x)
+        x_w = self.pool_w(x).permute(0, 1, 3, 2)
+
+        y = torch.cat([x_h, x_w], dim=2)
+        y = self.conv1(y)
+        y = self.bn1(y)
+        y = self.act(y)
+
+        x_h, x_w = torch.split(y, [h, w], dim=2)
+        x_w = x_w.permute(0, 1, 3, 2)
+
+        a_h = self.conv_h(x_h).sigmoid()
+        a_w = self.conv_w(x_w).sigmoid()
+
+        out = identity * a_w * a_h
+
+        return out
+
+
+
+class SimAM(torch.nn.Module):
+    def __init__(self,w,h,e_lambda=1e-4):
+        super(SimAM, self).__init__()
+
+        self.activaton = nn.Sigmoid()
+        self.e_lambda = e_lambda
+
+    def __repr__(self):
+        s = self.__class__.__name__ + '('
+        s += ('lambda=%f)' % self.e_lambda)
+        return s
+
+    @staticmethod
+    def get_module_name():
+        return "simam"
+
+    def forward(self, x):
+        b, c, h, w = x.size()
+
+        n = w * h - 1
+
+        x_minus_mu_square = (x - x.mean(dim=[2, 3], keepdim=True)).pow(2)
+        y = x_minus_mu_square / (4 * (x_minus_mu_square.sum(dim=[2, 3], keepdim=True) / n + self.e_lambda)) + 0.5
+
+        return x * self.activaton(y)
