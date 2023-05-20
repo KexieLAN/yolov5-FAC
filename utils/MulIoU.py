@@ -19,7 +19,7 @@ import torch.nn as nn
 # EIoU：在CIOU的惩罚项基础上将纵横比的影响因子拆开分别计算目标框和锚框的长和宽
 # SIoU：在之前的基础上，增加对角度（向量）的考虑
 # WIoU：动态调整的IoU，需要一下的两个额外参数👇，和额外的class
-# scale: scale为True时，WIoU会乘以一个系数
+# scale: scale为True时，WIoU会乘以单聚焦系数
 # monotonous: 3个输入分别代表WIoU的3个版本，None: origin v1, True: monotonic FM v2, False: non-monotonic FM v3
 
 def bbox_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, SIoU=False, EIoU=False, WIoU=False, Focal=False,
